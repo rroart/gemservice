@@ -17,9 +17,9 @@ def predictrunner(queue, request):
     pr = predict.Predict()
     pr.do_learntestlist(queue, request)
 
-#def hasgpurunner(queue, dummy):
-#    import device
-#    device.hasgpu(queue)
+def hasgpu():
+    import torch
+    return torch.cuda.is_available()
     
 app = Flask(__name__)
 
@@ -68,6 +68,17 @@ def do_learntestpredict():
     result = queue.get()
     return result
 
+@app.route('/dataset', methods=['POST'])
+def do_dataset():
+    def classifyrunner(queue, request):
+        return cl.do_dataset(queue, request)
+    queue = Queue()
+    process = Process(target=classifyrunner, args=(queue, request))
+    process.start()
+    process.join()
+    result = queue.get()
+    return result
+
 if __name__ == '__main__':
 #    queue = Queue()
 #    process = Process(target=hasgpurunner, args=(queue, None))
@@ -77,7 +88,8 @@ if __name__ == '__main__':
     import classify
     global cl
     cl = classify.Classify()
-    hasgpu = False
+    hasgpu = hasgpu()
+    print("Has GPU", hasgpu)
     threaded = False
     if len(sys.argv) > 1 and (not hasgpu) and sys.argv[1] == 'multi':
         threaded = True

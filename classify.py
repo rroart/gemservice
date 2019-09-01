@@ -16,6 +16,8 @@ from multiprocessing import Queue
 
 import importlib
 
+import mydatasets
+
 global dicteval
 dicteval = {}
 global dictclass
@@ -31,8 +33,8 @@ class Classify:
     def do_eval(self, request):
         global dicteval
         myobj = json.loads(request.get_data(as_text=True), object_hook=lt.LearnTest)
-        print("geteval" + str(myobj.modelInt) + myobj.period + myobj.mapname)
-        accuracy_score = dicteval[str(myobj.modelInt) + myobj.period + myobj.mapname]
+        print("geteval" + str(myobj.modelInt) + myobj.period + myobj.filename)
+        accuracy_score = dicteval[str(myobj.modelInt) + myobj.period + myobj.filename]
         return Response(json.dumps({"accuracy": accuracy_score}), mimetype='application/json')
 
     def do_classify(self, request):
@@ -55,7 +57,7 @@ class Classify:
         problist = []
         array = torch.FloatTensor(array)
         global dicttask
-        task = dicttask[myobj.mapname]
+        task = dicttask[myobj.filename]
         predictions = model(array, task)
         #print(type(predictions))
         print("predictions")
@@ -67,17 +69,12 @@ class Classify:
         #accuracy = 100 * correct / total
         #print(accuracy)
         intlist = predicted.tolist()
-        #probs = torch.softmax(predictions, dim=1)
-        #winners = probs.argmax(dim=1)
-        #corrects = (winners == target)
-        #clf = np.where(predictions < 0.5, 0, 1)
-        #print(clf)
-        #for prediction in clf:
-        #    intlist.append(int(prediction[0]))
-        #    problist.append(int(prediction[0]))
-        #shutil.rmtree("/tmp/tf" + str(myobj.modelInt) + myobj.period + myobj.mapname + str(count))
         del predictions
         del model
+        if not self.zero(myobj):
+            intlist = np.array(intlist)
+            intlist = intlist + 1
+            intlist = intlist.tolist()
         return intlist, problist
 
     def do_test(self, request):
@@ -94,8 +91,8 @@ class Classify:
             test = np.array(myobj.trainarray, dtype='f')
             testcat = np.array(myobj.traincatarray, dtype='i')
         global dicttask
-        task = dicttask[myobj.mapname]
-        accuracy_score = self.do_testinner(myobj, model, test, testcat, task)
+        task = dicttask[myobj.filename]
+        accuracy_score = self.do_testinner(myobj, model, test, testcat, task, train, traincat, test, testcat)
         dt = datetime.now()
         print ("millis ", (dt.timestamp() - timestamp)*1000)
         return Response(json.dumps({"accuracy": float(accuracy_score)}), mimetype='application/json')
@@ -108,7 +105,8 @@ class Classify:
         #print(request.get_data(as_text=True))
         myobj = json.loads(request.get_data(as_text=True), object_hook=lt.LearnTest)
         (config, model) = self.getmodel(myobj)
-        accuracy_score = self.do_learntestinner(myobj, model, config)
+        (train, traincat, test, testcat) = self.gettraintest(myobj)
+        accuracy_score = self.do_learntestinner(myobj, model, config, train, traincat, test, testcat)
         dt = datetime.now()
         print ("millis ", (dt.timestamp() - timestamp)*1000)
         return Response(json.dumps({"accuracy": float(accuracy_score)}), mimetype='application/json')
@@ -160,10 +158,11 @@ class Classify:
             # print statistics
             running_loss += loss.item()
 
+    # non-zero is default
     def zero(self, myobj):
-        return hasattr(myobj, 'zero') or myobj.zero == False
+        return hasattr(myobj, 'zero') and myobj.zero == True
             
-    def do_learntestinner(self, myobj, model, config):
+    def gettraintest(self, myobj):
         array = np.array(myobj.trainingarray, dtype='f')
         cat = np.array(myobj.trainingcatarray, dtype='i')
         # NOTE class range 1 - 4 will be changed to 0 - 3
@@ -194,8 +193,11 @@ class Classify:
                 test = array
                 traincat = cat
                 testcat = cat
-        print("outcomes")
-        print(myobj.outcomes)
+        return train, traincat, test, testcat
+
+    def do_learntestinner(self, myobj, model, config, train, traincat, test, testcat):
+        #print("classes")
+        #print(myobj.classes)
         #print("cwd")
         #print(os.getcwd())
         #np.random.seed(0)
@@ -208,7 +210,7 @@ class Classify:
         #net.train()
 
         v_x = torch.FloatTensor(train)
-        v_y = torch.FloatTensor(traincat)
+        #v_y = torch.FloatTensor(traincat)
         #.reshape(1, -1)
         v_y = torch.LongTensor(traincat)
         #.reshape(1, -1)
@@ -221,7 +223,7 @@ class Classify:
         #print(v_x)
         #print(v_y)
         global dicttask
-        task = dicttask[myobj.mapname]
+        task = dicttask[myobj.filename]
         if myobj.modelInt == 5:
             #print("bl", task, model.memory_data.size())
             mysize = model.memory_data.size()
@@ -246,15 +248,17 @@ class Classify:
         self.mytrain(model, v_x, v_y, config, task)
         print("Trained task", task)
         if not self.taskone(myobj) and myobj.modelInt == 5:
-            dicttask[myobj.mapname] = task + 1
+            dicttask[myobj.filename] = task + 1
         
         model.eval()
+        # save is default
         if not (hasattr(myobj, 'save') and myobj.save == False):
-            torch.save({'model': model, 'task': dicttask[myobj.mapname] }, self.getpath(myobj) + myobj.mapname + ".pt")
-            #torch.save({'model_state_dict': model.state_dict(), 'optimizer_state_dict': optimizer.state_dict(), 'task': dicttask[myobj.mapname] }, self.getpath(myobj) + myobj.mapname + ".pt")
-        return self.do_testinner(myobj, model, test, testcat, task)
+            print("Saving model")
+            torch.save({'model': model, 'task': dicttask[myobj.filename] }, self.getpath(myobj) + myobj.filename + ".pt")
+            #torch.save({'model_state_dict': model.state_dict(), 'optimizer_state_dict': optimizer.state_dict(), 'task': dicttask[myobj.filename] }, self.getpath(myobj) + myobj.filename + ".pt")
+        return self.do_testinner(myobj, model, train, test, testcat, task)
 
-    def do_testinner(self, myobj, model, test, testcat, task):
+    def do_testinner(self, myobj, model, train, test, testcat, task):
         test_loss = 0
         accuracy_score = 0
 
@@ -266,7 +270,7 @@ class Classify:
         (max_vals, arg_maxs) = torch.max(y_hat.data, dim=1) 
         # arg_maxs is tensor of indices [0, 1, 0, 2, 1, 1 . . ]
         num_correct = torch.sum(tv_y==arg_maxs)
-        acc = float(num_correct) / len(testcat)
+        acc = float(num_correct) / len(tv_y)
         #print(len(testcat))
         #print(tv_y)
         #print(arg_maxs)
@@ -298,11 +302,12 @@ class Classify:
          (config, modelname) = self.getModel(myobj)
          global dictclass
          #print(dictclass.keys())
-         if myobj.mapname in dictclass:
-             model = dictclass[myobj.mapname]
+         if myobj.filename in dictclass:
+             model = dictclass[myobj.filename]
          else:
-            if os.path.isfile(self.getpath(myobj) + myobj.mapname + ".pt"):
-                checkpoint = torch.load(self.getpath(myobj) + myobj.mapname + ".pt")
+            if os.path.isfile(self.getpath(myobj) + myobj.filename + ".pt"):
+                print("Loading model")
+                checkpoint = torch.load(self.getpath(myobj) + myobj.filename + ".pt")
                 model = checkpoint['model']
                 task = checkpoint['task']
                 model.eval()
@@ -320,11 +325,11 @@ class Classify:
                     n_tasks = 10
                 else:
                     n_tasks = initial_tasks
-                model = Model.Net(myobj.size, myobj.outcomes, n_tasks, config)
+                model = Model.Net(myobj.size, myobj.classes, n_tasks, config)
                 task = 0
-            dictclass[myobj.mapname] = model
+            dictclass[myobj.filename] = model
             global dicttask
-            dicttask[myobj.mapname] = task
+            dicttask[myobj.filename] = task
          return config, model
          
     def getModel(self, myobj):
@@ -353,7 +358,8 @@ class Classify:
         timestamp = dt.timestamp()
         myobj = json.loads(request.get_data(as_text=True), object_hook=lt.LearnTest)
         (config, model) = self.getmodel(myobj)
-        accuracy_score = self.do_learntestinner(myobj, model, config)
+        (train, traincat, test, testcat) = self.gettraintest(myobj)
+        accuracy_score = self.do_learntestinner(myobj, model, config, train, traincat, test, testcat)
         (intlist, problist) = self.do_classifyinner(myobj, model)
         print(len(intlist))
         print(intlist)
@@ -361,3 +367,28 @@ class Classify:
         dt = datetime.now()
         print ("millis ", (dt.timestamp() - timestamp)*1000)
         queue.put(Response(json.dumps({"classifycatarray": intlist, "classifyprobarray": problist, "accuracy": float(accuracy_score)}), mimetype='application/json'))
+
+    def do_dataset(self, queue, request):
+        dt = datetime.now()
+        timestamp = dt.timestamp()
+        #print(request.get_data(as_text=True))
+        myobj = json.loads(request.get_data(as_text=True), object_hook=lt.LearnTest)
+        (config, modelname) = self.getModel(myobj)
+        Model = importlib.import_module('fb.model.' + modelname)
+        (train, traincat, test, testcat, size, classes) = mydatasets.getdataset(myobj)
+        myobj.size = size
+        myobj.classes = classes
+        if not self.taskone(myobj) and myobj.modelInt == 5:
+            n_tasks = 10
+        else:
+            n_tasks = initial_tasks
+        model = Model.Net(myobj.size, myobj.classes, n_tasks, config)
+        classifier = model
+        task = 0
+        global dicttask
+        dicttask[myobj.filename] = task
+        accuracy_score = self.do_learntestinner(myobj, classifier, config, train, traincat, test, testcat)
+        dt = datetime.now()
+        print ("millis ", (dt.timestamp() - timestamp)*1000)
+        queue.put(Response(json.dumps({"accuracy": float(accuracy_score)}), mimetype='application/json'))
+        #return Response(json.dumps({"accuracy": float(accuracy_score)}), mimetype='application/json')
