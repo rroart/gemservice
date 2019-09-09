@@ -333,6 +333,7 @@ class Classify:
          return config, model
          
     def getModel(self, myobj):
+      if hasattr(myobj, 'modelInt'):
         if myobj.modelInt == 1:
             modelname = 'single'
             config = myobj.gemSConfig
@@ -352,6 +353,20 @@ class Classify:
             modelname = 'icarl'
             config = myobj.gemiCaRLConfig
         return config, modelname;
+      if hasattr(myobj, 'modelName'):
+        if myobj.modelName == 'single':
+            config = myobj.gemSConfig
+        if myobj.modelName == 'independent':
+            config = myobj.gemIConfig
+        if myobj.modelName == 'multimodal':
+            config = myobj.gemMConfig
+        if myobj.modelName == 'ewc':
+            config = myobj.gemEWCConfig
+        if myobj.modelName == 'gem':
+            config = myobj.gemGEMConfig
+        if myobj.modelName == 'icarl':
+            config = myobj.gemiCaRLConfig
+        return config, myobj.modelName;
     
     def do_learntestclassify(self, queue, request):
         dt = datetime.now()
