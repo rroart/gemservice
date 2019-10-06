@@ -342,7 +342,7 @@ class Classify:
             config = myobj.gemIConfig
         if myobj.modelInt == 3:
             modelname = 'multimodal'
-            config = myobj.gemMConfig
+            config = myobj.gemMMConfig
         if myobj.modelInt == 4:
             modelname = 'ewc'
             config = myobj.gemEWCConfig
@@ -351,7 +351,7 @@ class Classify:
             config = myobj.gemGEMConfig
         if myobj.modelInt == 6:
             modelname = 'icarl'
-            config = myobj.gemiCaRLConfig
+            config = myobj.gemiCarlConfig
         return config, modelname;
       if hasattr(myobj, 'modelName'):
         if myobj.modelName == 'single':
@@ -359,14 +359,32 @@ class Classify:
         if myobj.modelName == 'independent':
             config = myobj.gemIConfig
         if myobj.modelName == 'multimodal':
-            config = myobj.gemMConfig
+            config = myobj.gemMMConfig
         if myobj.modelName == 'ewc':
             config = myobj.gemEWCConfig
         if myobj.modelName == 'gem':
             config = myobj.gemGEMConfig
         if myobj.modelName == 'icarl':
-            config = myobj.gemiCaRLConfig
+            config = myobj.gemiCarlConfig
         return config, myobj.modelName;
+
+    def wantDynamic(self, myobj):
+        hasit = hasattr(myobj, 'neuralnetcommand')
+        if not hasit or (hasit and myobj.neuralnetcommand.mldynamic):
+            return True
+        return False
+
+    def wantLearn(self, myobj):
+        hasit = hasattr(myobj, 'neuralnetcommand')
+        if not hasit or (hasit and myobj.neuralnetcommand.mllearn):
+            return True
+        return False
+
+    def wantClassify(self, myobj):
+        hasit = hasattr(myobj, 'neuralnetcommand')
+        if not hasit or (hasit and myobj.neuralnetcommand.mlclassify):
+            return True
+        return False
     
     def do_learntestclassify(self, queue, request):
         dt = datetime.now()
@@ -374,14 +392,20 @@ class Classify:
         myobj = json.loads(request.get_data(as_text=True), object_hook=lt.LearnTest)
         (config, model) = self.getmodel(myobj)
         (train, traincat, test, testcat) = self.gettraintest(myobj)
-        accuracy_score = self.do_learntestinner(myobj, model, config, train, traincat, test, testcat)
-        (intlist, problist) = self.do_classifyinner(myobj, model)
-        print(len(intlist))
+        accuracy_score = None
+        if self.wantLearn(myobj):
+            accuracy_score = self.do_learntestinner(myobj, model, config, train, traincat, test, testcat)
+        (intlist, problist) = (None, None)
+        if self.wantClassify(myobj):
+            (intlist, problist) = self.do_classifyinner(myobj, model)
+        #print(len(intlist))
         print(intlist)
         print(problist)
         dt = datetime.now()
+        if not accuracy_score is None:
+            accuracy_score = float(accuracy_score)
         print ("millis ", (dt.timestamp() - timestamp)*1000)
-        queue.put(Response(json.dumps({"classifycatarray": intlist, "classifyprobarray": problist, "accuracy": float(accuracy_score)}), mimetype='application/json'))
+        queue.put(Response(json.dumps({"classifycatarray": intlist, "classifyprobarray": problist, "accuracy": accuracy_score}), mimetype='application/json'))
 
     def do_dataset(self, queue, request):
         dt = datetime.now()
@@ -407,3 +431,8 @@ class Classify:
         print ("millis ", (dt.timestamp() - timestamp)*1000)
         queue.put(Response(json.dumps({"accuracy": float(accuracy_score)}), mimetype='application/json'))
         #return Response(json.dumps({"accuracy": float(accuracy_score)}), mimetype='application/json')
+
+    def do_filename(self, request):
+        myobj = json.loads(request.get_data(as_text=True), object_hook=lt.LearnTest)
+        exists = os.path.isfile(self.getpath(myobj) + myobj.filename + ".pt")
+        return Response(json.dumps({"exists": exists}), mimetype='application/json')
