@@ -351,7 +351,7 @@ class Classify:
             config = myobj.gemGEMConfig
         if myobj.modelInt == 6:
             modelname = 'icarl'
-            config = myobj.gemiCarlConfig
+            config = myobj.gemIcarlConfig
         return config, modelname;
       if hasattr(myobj, 'modelName'):
         if myobj.modelName == 'single':
