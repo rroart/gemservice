@@ -365,7 +365,7 @@ class Classify:
         if myobj.modelName == 'gem':
             config = myobj.gemGEMConfig
         if myobj.modelName == 'icarl':
-            config = myobj.gemiCarlConfig
+            config = myobj.gemIcarlConfig
         return config, myobj.modelName;
 
     def wantDynamic(self, myobj):
