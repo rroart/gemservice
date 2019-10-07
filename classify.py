@@ -391,6 +391,9 @@ class Classify:
         timestamp = dt.timestamp()
         myobj = json.loads(request.get_data(as_text=True), object_hook=lt.LearnTest)
         (config, model) = self.getmodel(myobj)
+        if myobj.modelInt == 6:
+            queue.put(Response(json.dumps({"classifycatarray": None, "classifyprobarray": None, "accuracy": None}), mimetype='application/json'))
+            return
         (train, traincat, test, testcat) = self.gettraintest(myobj)
         accuracy_score = None
         if self.wantLearn(myobj):
