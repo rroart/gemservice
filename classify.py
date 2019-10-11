@@ -182,7 +182,7 @@ class Classify:
             if not self.zero(myobj):
                 testcat = testcat - 1
         else:
-            (lenrow, lencol) = array.shape
+            lenrow = array.shape[0]
             half = round(lenrow / 2)
             train = array[:half, :]
             test = array[half:, :]
