@@ -435,7 +435,7 @@ class Classify:
         queue.put(Response(json.dumps({"accuracy": float(accuracy_score)}), mimetype='application/json'))
         #return Response(json.dumps({"accuracy": float(accuracy_score)}), mimetype='application/json')
 
-    def do_filename(self, request):
+    def do_filename(self, queue, request):
         myobj = json.loads(request.get_data(as_text=True), object_hook=lt.LearnTest)
         exists = os.path.isfile(self.getpath(myobj) + myobj.filename + ".pt")
-        return Response(json.dumps({"exists": exists}), mimetype='application/json')
+        queue.put(Response(json.dumps({"exists": exists}), mimetype='application/json'))
