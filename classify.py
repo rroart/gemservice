@@ -291,7 +291,7 @@ class Classify:
         return accuracy_score
 
     def getpath(self, myobj):
-        if hasattr(myobj, 'path'):
+        if hasattr(myobj, 'path') and not myobj.path is None:
             return myobj.path + '/'
         return '/tmp/'
     
