@@ -53,6 +53,7 @@ class Classify:
         
     def do_classifyinner(self, myobj, model):
         array = np.array(myobj.classifyarray, dtype='f')
+        print("Classify", array.shape)
         intlist = []
         problist = []
         array = torch.FloatTensor(array)
@@ -193,6 +194,7 @@ class Classify:
                 test = array
                 traincat = cat
                 testcat = cat
+        print("Shapes", train.shape, traincat.shape)        
         return train, traincat, test, testcat
 
     def do_learntestinner(self, myobj, model, config, train, traincat, test, testcat):
