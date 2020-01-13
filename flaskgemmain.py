@@ -45,7 +45,20 @@ def do_learntest():
 @app.route('/learntestclassify', methods=['POST'])
 def do_learntestclassify():
     def classifyrunner(queue, request):
-        cl.do_learntestclassify(queue, request)
+        import classify
+        cl = classify.Classify()
+        try:
+            cl.do_learntestclassify(queue, request)
+        except:
+            queue.put(Response(json.dumps({"classifycatarray": None, "classifyprobarray": None, "accuracy": None, "loss": None }), mimetype='application/json'))
+            import sys,traceback
+            traceback.print_exc(file=sys.stdout)
+            print("\n")
+            import random
+            f = open("/tmp/outgem" + argstr() + str(random.randint(1000,9999)) +".txt", "w")
+            f.write(request.get_data(as_text=True))
+            traceback.print_exc(file=f)
+            f.close()
     queue = Queue()
     process = Process(target=classifyrunner, args=(queue, request))
     process.start()
@@ -75,6 +88,8 @@ def do_learntestpredict():
 def do_dataset():
     def classifyrunner(queue, request):
         try:
+            import classify
+            cl = classify.Classify()
             cl.do_dataset(queue, request)
         except:
             queue.put(Response(json.dumps({"accuracy": None, "loss": None}), mimetype='application/json'))
@@ -82,7 +97,7 @@ def do_dataset():
             traceback.print_exc(file=sys.stdout)
             print("\n")
             import random
-            f = open("/tmp/outpt" + argstr() + str(random.randint(1000,9999)) + ".txt", "w")
+            f = open("/tmp/outgem" + argstr() + str(random.randint(1000,9999)) + ".txt", "w")
             f.write(request.get_data(as_text=True))
             traceback.print_exc(file=f)
             f.close()
@@ -118,9 +133,6 @@ if __name__ == '__main__':
 #    process.start()
 #    process.join()
 #    hasgpu = queue.get()
-    import classify
-    global cl
-    cl = classify.Classify()
     hasgpu = hasgpu()
     print("Has GPU", hasgpu)
     threaded = False
