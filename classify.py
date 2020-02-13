@@ -12,7 +12,7 @@ from datetime import datetime
 from werkzeug.wrappers import Response
 import shutil
 
-from multiprocessing import Queue
+#from multiprocessing import Queue
 
 import importlib
 
@@ -394,8 +394,7 @@ class Classify:
         myobj = json.loads(request.get_data(as_text=True), object_hook=lt.LearnTest)
         (config, model) = self.getmodel(myobj)
         if myobj.modelInt == 6:
-            queue.put(Response(json.dumps({"classifycatarray": None, "classifyprobarray": None, "accuracy": None}), mimetype='application/json'))
-            return
+            return(Response(json.dumps({"classifycatarray": None, "classifyprobarray": None, "accuracy": None}), mimetype='application/json'))
         (train, traincat, test, testcat) = self.gettraintest(myobj)
         accuracy_score = None
         if self.wantLearn(myobj):
@@ -410,7 +409,7 @@ class Classify:
         if not accuracy_score is None:
             accuracy_score = float(accuracy_score)
         print ("millis ", (dt.timestamp() - timestamp)*1000)
-        queue.put(Response(json.dumps({"classifycatarray": intlist, "classifyprobarray": problist, "accuracy": accuracy_score}), mimetype='application/json'))
+        return(Response(json.dumps({"classifycatarray": intlist, "classifyprobarray": problist, "accuracy": accuracy_score}), mimetype='application/json'))
 
     def do_dataset(self, queue, request):
         dt = datetime.now()
@@ -434,10 +433,10 @@ class Classify:
         accuracy_score = self.do_learntestinner(myobj, classifier, config, train, traincat, test, testcat)
         dt = datetime.now()
         print ("millis ", (dt.timestamp() - timestamp)*1000)
-        queue.put(Response(json.dumps({"accuracy": float(accuracy_score)}), mimetype='application/json'))
+        return(Response(json.dumps({"accuracy": float(accuracy_score)}), mimetype='application/json'))
         #return Response(json.dumps({"accuracy": float(accuracy_score)}), mimetype='application/json')
 
     def do_filename(self, queue, request):
         myobj = json.loads(request.get_data(as_text=True), object_hook=lt.LearnTest)
         exists = os.path.isfile(self.getpath(myobj) + myobj.filename + ".pt")
-        queue.put(Response(json.dumps({"exists": exists}), mimetype='application/json'))
+        return(Response(json.dumps({"exists": exists}), mimetype='application/json'))
