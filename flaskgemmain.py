@@ -53,9 +53,9 @@ def do_learntest():
 @app.route('/learntestclassify', methods=['POST'])
 def do_learntestclassify():
     def classifyrunner(queue, request):
-        import classify
-        cl = classify.Classify()
         try:
+            import classify
+            cl = classify.Classify()
             return cl.do_learntestclassify(queue, request)
         except:
             import sys,traceback
@@ -136,7 +136,7 @@ def argstr():
     if len(sys.argv) > 1 and sys.argv[1].isnumeric():
         return sys.argv[1]
     else:
-        return 80
+        return str(80)
 
 if __name__ == '__main__':
 #    queue = Queue()
